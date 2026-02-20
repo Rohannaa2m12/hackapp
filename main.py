@@ -313,3 +313,48 @@ class HaxEfficiencyAnalytics:
 
     def top_users_by_score(self, limit: int = 20) -> List[Tuple[str, int]]:
         scores: Dict[str, int] = {}
+        for g in self._engine._gadgets.values():
+            scores[g.owner] = scores.get(g.owner, 0)
+        for u, c in self._engine._shortcut_count_by_user.items():
+            scores[u] = scores.get(u, 0)  # ensure key exists
+        eff = self._engine._efficiency_score
+        combined = [(u, eff.get(u, 0)) for u in set(list(eff.keys()) + list(scores.keys()))]
+        combined.sort(key=lambda x: -x[1])
+        return combined[:limit]
+
+    def gadgets_by_category(self) -> Dict[HaxGadgetCategory, int]:
+        out: Dict[HaxGadgetCategory, int] = {c: 0 for c in HaxGadgetCategory}
+        for g in self._engine._gadgets.values():
+            out[g.category] = out.get(g.category, 0) + 1
+        return out
+
+    def claims_per_gadget(self, gadget_id: int) -> int:
+        g = self._engine.get_gadget(gadget_id)
+        return g.claim_count if g else 0
+
+
+# ---------------------------------------------------------------------------
+# Export / Import
+# ---------------------------------------------------------------------------
+
+def hax_export_gadgets(engine: HackAppEngine) -> str:
+    data = {
+        "version": HAX_EXPORT_VERSION,
+        "domain": HAX_DOMAIN_SEED,
+        "exported_at": time.time(),
+        "gadgets": [g.to_dict() for g in engine._gadgets.values()],
+    }
+    return json.dumps(data, indent=2)
+
+
+def hax_export_shortcuts(engine: HackAppEngine, limit: int = 500) -> str:
+    shortcuts = list(engine._shortcuts.values())[-limit:]
+    data = {
+        "version": HAX_EXPORT_VERSION,
+        "shortcuts": [s.to_dict() for s in shortcuts],
+    }
+    return json.dumps(data, indent=2)
+
+
+def hax_import_gadgets_json(engine: HackAppEngine, json_str: str) -> int:
+    data = json.loads(json_str)
