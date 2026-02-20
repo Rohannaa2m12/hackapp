@@ -88,3 +88,48 @@ class HaxGadgetInactiveError(Exception):
 
 
 class HaxClaimTooSoonError(Exception):
+    def __init__(self, user: str, wait_sec: int) -> None:
+        super().__init__(f"HackApp: claim too soon for {user}, wait {wait_sec}s")
+
+
+class HaxFeeRequiredError(Exception):
+    def __init__(self, required_wei: int) -> None:
+        super().__init__(f"HackApp: fee required: {required_wei} wei")
+
+
+class HaxNotOperatorError(Exception):
+    def __init__(self, addr: str) -> None:
+        super().__init__(f"HackApp: not operator: {addr}")
+
+
+class HaxPausedError(Exception):
+    def __init__(self) -> None:
+        super().__init__("HackApp: contract paused")
+
+
+# ---------------------------------------------------------------------------
+# Data models
+# ---------------------------------------------------------------------------
+
+@dataclass
+class HaxGadget:
+    gadget_id: int
+    owner: str
+    gadget_hash: str
+    category: HaxGadgetCategory
+    registered_at: float
+    active: bool
+    claim_count: int = 0
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "gadget_id": self.gadget_id,
+            "owner": self.owner,
+            "gadget_hash": self.gadget_hash,
+            "category": self.category.value,
+            "registered_at": self.registered_at,
+            "active": self.active,
+            "claim_count": self.claim_count,
+        }
+
+
