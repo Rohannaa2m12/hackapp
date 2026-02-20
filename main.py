@@ -448,3 +448,48 @@ class HaxEventBus:
                 pass
 
 
+# ---------------------------------------------------------------------------
+# Treasury math (aligned with Solidity)
+# ---------------------------------------------------------------------------
+
+def hax_operator_fee_wei(total_wei: int) -> int:
+    return (total_wei * HAX_OPERATOR_FEE_BPS) // HAX_BPS_DENOM
+
+
+def hax_treasury_wei(total_wei: int) -> int:
+    return total_wei - hax_operator_fee_wei(total_wei)
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+    engine = HackAppEngine()
+    engine.register_gadget("0xAlice", "Ctrl+Shift+P -> Command Palette", fee_wei=HAX_FEE_WEI)
+    engine.register_gadget("0xBob", "Cmd+K Cmd+D -> Format", fee_wei=HAX_FEE_WEI)
+    engine.claim_shortcut(1, "0xCharlie")
+    hax_cli_stats(engine, "0xAlice")
+    print(engine.get_global_stats())
+
+
+# ---------------------------------------------------------------------------
+# Extended models and helpers (1200+ lines total)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class HaxGadgetMeta:
+    title: str
+    description: str
+    tags: List[str]
+    created_at: float = field(default_factory=time.time)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"title": self.title, "description": self.description, "tags": self.tags, "created_at": self.created_at}
+
+
+class HaxConfigLoader:
+    DEFAULT_PATH = "hackapp_config.json"
+
+    @staticmethod
+    def load(path: Optional[str] = None) -> Dict[str, Any]:
