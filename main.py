@@ -673,3 +673,48 @@ def hax_serialize_gadget_for_evm(g: HaxGadget) -> Dict[str, Any]:
     return {
         "gadget_id": g.gadget_id,
         "owner": g.owner,
+        "gadget_hash": "0x" + g.gadget_hash[:64],
+        "registered_at": int(g.registered_at),
+        "active": g.active,
+    }
+
+
+class HaxTokenBucket:
+    def __init__(self, rate: float, capacity: int) -> None:
+        self._rate = rate
+        self._capacity = capacity
+        self._tokens = float(capacity)
+        self._last = time.time()
+
+    def consume(self, n: int = 1) -> bool:
+        now = time.time()
+        self._tokens = min(self._capacity, self._tokens + (now - self._last) * self._rate)
+        self._last = now
+        if self._tokens >= n:
+            self._tokens -= n
+            return True
+        return False
+
+
+class HaxAuditLog:
+    def __init__(self, max_entries: int = 10000) -> None:
+        self._entries: List[Dict[str, Any]] = []
+        self._max = max_entries
+
+    def log(self, action: str, actor: str, details: Dict[str, Any]) -> None:
+        self._entries.append({"action": action, "actor": actor, "details": details, "ts": time.time()})
+        if len(self._entries) > self._max:
+            self._entries = self._entries[-self._max:]
+
+    def recent(self, limit: int = 100) -> List[Dict[str, Any]]:
+        return list(reversed(self._entries[-limit:]))
+
+
+def hax_gadget_hash_evm_compat(payload: str, nonce: int) -> str:
+    msg = (HAX_DOMAIN_SEED + payload + str(nonce)).encode()
+    return "0x" + hashlib.sha256(msg).hexdigest()
+
+
+class HaxFeatureFlags:
+    def __init__(self) -> None:
+        self._flags: Dict[str, bool] = {
