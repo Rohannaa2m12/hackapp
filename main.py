@@ -853,3 +853,48 @@ class HaxMiddlewareChain:
         for fn in self._handlers:
             val = fn(val)
         return val
+
+
+class HaxValidationRule:
+    def __init__(self, name: str, predicate: Callable[[Any], bool], message: str) -> None:
+        self.name = name
+        self.predicate = predicate
+        self.message = message
+
+    def check(self, value: Any) -> Tuple[bool, str]:
+        return (self.predicate(value), self.message) if not self.predicate(value) else (True, "")
+
+
+def hax_rules_gadget_payload() -> List[HaxValidationRule]:
+    return [
+        HaxValidationRule("non_empty", lambda x: bool(x and str(x).strip()), "Payload cannot be empty"),
+        HaxValidationRule("max_len", lambda x: len(str(x)) <= 4096, "Payload exceeds max length"),
+        HaxValidationRule("no_null_bytes", lambda x: "\x00" not in str(x), "Payload must not contain null bytes"),
+    ]
+
+
+def hax_rules_owner() -> List[HaxValidationRule]:
+    return [
+        HaxValidationRule("length", lambda x: 2 <= len(str(x)) <= 64, "Owner length must be 2-64"),
+        HaxValidationRule("chars", lambda x: hax_validate_owner(str(x)), "Owner format invalid"),
+    ]
+
+
+def hax_apply_rules(value: Any, rules: List[HaxValidationRule]) -> Tuple[bool, List[str]]:
+    errors: List[str] = []
+    for r in rules:
+        ok, msg = r.check(value)
+        if not ok:
+            errors.append(f"{r.name}: {msg}")
+    return (len(errors) == 0, errors)
+
+
+class HaxFormatter:
+    @staticmethod
+    def format_wei(wei: int) -> str:
+        if wei >= 10**18:
+            return f"{wei / 10**18:.4f} ETH"
+        return f"{wei} wei"
+
+    @staticmethod
+    def format_score(score: int) -> str:
