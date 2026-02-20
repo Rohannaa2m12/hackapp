@@ -358,3 +358,48 @@ def hax_export_shortcuts(engine: HackAppEngine, limit: int = 500) -> str:
 
 def hax_import_gadgets_json(engine: HackAppEngine, json_str: str) -> int:
     data = json.loads(json_str)
+    count = 0
+    for g in data.get("gadgets", []):
+        try:
+            owner = g.get("owner", "imported")
+            payload = g.get("gadget_hash", "") + str(count)
+            cat = HaxGadgetCategory(g.get("category", "snippet"))
+            engine.register_gadget(owner, payload, category=cat, fee_wei=0)
+            count += 1
+        except Exception:
+            pass
+    return count
+
+
+# ---------------------------------------------------------------------------
+# CLI runner
+# ---------------------------------------------------------------------------
+
+def hax_cli_register(engine: HackAppEngine, owner: str, payload: str) -> None:
+    g = engine.register_gadget(owner, payload, fee_wei=HAX_FEE_WEI)
+    print(f"Registered gadget {g.gadget_id} for {owner}, hash={g.gadget_hash[:16]}...")
+
+
+def hax_cli_claim(engine: HackAppEngine, gadget_id: int, claimer: str) -> None:
+    s = engine.claim_shortcut(gadget_id, claimer)
+    print(f"Claimed shortcut {s.shortcut_id}, score +{s.score_added}")
+
+
+def hax_cli_stats(engine: HackAppEngine, user: Optional[str] = None) -> None:
+    gs = engine.get_global_stats()
+    print("Global:", gs)
+    if user:
+        st = engine.get_user_stats(user)
+        print("User stats:", st.to_dict())
+
+
+# ---------------------------------------------------------------------------
+# Gadget validation
+# ---------------------------------------------------------------------------
+
+def hax_validate_payload(payload: str, max_len: int = 4096) -> bool:
+    if not payload or len(payload) > max_len:
+        return False
+    return True
+
+
