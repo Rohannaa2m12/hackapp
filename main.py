@@ -133,3 +133,48 @@ class HaxGadget:
         }
 
 
+@dataclass
+class HaxShortcut:
+    shortcut_id: int
+    gadget_id: int
+    claimer: str
+    claimed_at: float
+    score_added: int
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "shortcut_id": self.shortcut_id,
+            "gadget_id": self.gadget_id,
+            "claimer": self.claimer,
+            "claimed_at": self.claimed_at,
+            "score_added": self.score_added,
+        }
+
+
+@dataclass
+class HaxUserStats:
+    user: str
+    gadget_count: int
+    shortcut_count: int
+    efficiency_score: int
+    tier: HaxEfficiencyTier
+    last_claim_at: float = 0.0
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "user": self.user,
+            "gadget_count": self.gadget_count,
+            "shortcut_count": self.shortcut_count,
+            "efficiency_score": self.efficiency_score,
+            "tier": self.tier.value.name,
+            "last_claim_at": self.last_claim_at,
+        }
+
+
+# ---------------------------------------------------------------------------
+# Hash and encoding helpers
+# ---------------------------------------------------------------------------
+
+def hax_hash_gadget(payload: str) -> str:
+    data = (HAX_DOMAIN_SEED + "|" + payload).encode("utf-8")
+    return hashlib.sha256(data).hexdigest()
