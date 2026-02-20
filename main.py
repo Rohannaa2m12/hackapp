@@ -898,3 +898,48 @@ class HaxFormatter:
 
     @staticmethod
     def format_score(score: int) -> str:
+        tier = HaxEfficiencyTier.from_score(score)
+        return f"{score} ({tier.value.name})"
+
+    @staticmethod
+    def format_ts(ts: float) -> str:
+        return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(ts))
+
+
+class HaxCsvExport:
+    @staticmethod
+    def gadgets_header() -> str:
+        return "gadget_id,owner,gadget_hash,category,registered_at,active,claim_count"
+
+    @staticmethod
+    def gadget_row(g: HaxGadget) -> str:
+        return f"{g.gadget_id},{g.owner},{g.gadget_hash},{g.category.value},{g.registered_at},{g.active},{g.claim_count}"
+
+    @staticmethod
+    def shortcuts_header() -> str:
+        return "shortcut_id,gadget_id,claimer,claimed_at,score_added"
+
+    @staticmethod
+    def shortcut_row(s: HaxShortcut) -> str:
+        return f"{s.shortcut_id},{s.gadget_id},{s.claimer},{s.claimed_at},{s.score_added}"
+
+
+def hax_export_csv_gadgets(engine: HackAppEngine) -> str:
+    lines = [HaxCsvExport.gadgets_header()]
+    for g in engine._gadgets.values():
+        lines.append(HaxCsvExport.gadget_row(g))
+    return "\n".join(lines)
+
+
+def hax_export_csv_shortcuts(engine: HackAppEngine, limit: int = 1000) -> str:
+    lines = [HaxCsvExport.shortcuts_header()]
+    for s in list(engine._shortcuts.values())[-limit:]:
+        lines.append(HaxCsvExport.shortcut_row(s))
+    return "\n".join(lines)
+
+
+class HaxRetryPolicy:
+    def __init__(self, max_attempts: int = 3, backoff_base: float = 0.5) -> None:
+        self.max_attempts = max_attempts
+        self.backoff_base = backoff_base
+
