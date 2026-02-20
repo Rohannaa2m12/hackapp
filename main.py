@@ -268,3 +268,48 @@ class HackAppEngine:
         self._last_claim_time[claimer] = now
         g.claim_count += 1
         return s
+
+    def set_gadget_active(self, gadget_id: int, owner: str, active: bool) -> None:
+        if gadget_id not in self._gadgets:
+            raise HaxInvalidGadgetIdError(gadget_id)
+        if self._gadgets[gadget_id].owner != owner:
+            raise HaxNotOperatorError(owner)
+        self._gadgets[gadget_id].active = active
+
+    def get_gadget(self, gadget_id: int) -> Optional[HaxGadget]:
+        return self._gadgets.get(gadget_id)
+
+    def get_gadget_ids_by_owner(self, owner: str) -> List[int]:
+        return list(self._gadget_ids_by_owner.get(owner, []))
+
+    def get_user_stats(self, user: str) -> HaxUserStats:
+        score = self._efficiency_score.get(user, 0)
+        return HaxUserStats(
+            user=user,
+            gadget_count=len(self._gadget_ids_by_owner.get(user, [])),
+            shortcut_count=self._shortcut_count_by_user.get(user, 0),
+            efficiency_score=score,
+            tier=HaxEfficiencyTier.from_score(score),
+            last_claim_at=self._last_claim_time.get(user, 0),
+        )
+
+    def get_global_stats(self) -> Dict[str, Any]:
+        return {
+            "total_gadgets": self._gadget_nonce,
+            "total_shortcuts": self._shortcut_nonce,
+            "total_fees_wei": self._total_fees_wei,
+            "unique_owners": len(self._gadget_ids_by_owner),
+            "unique_claimers": len(self._shortcut_count_by_user),
+        }
+
+
+# ---------------------------------------------------------------------------
+# Efficiency analytics
+# ---------------------------------------------------------------------------
+
+class HaxEfficiencyAnalytics:
+    def __init__(self, engine: HackAppEngine) -> None:
+        self._engine = engine
+
+    def top_users_by_score(self, limit: int = 20) -> List[Tuple[str, int]]:
+        scores: Dict[str, int] = {}
