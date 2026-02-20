@@ -718,3 +718,48 @@ def hax_gadget_hash_evm_compat(payload: str, nonce: int) -> str:
 class HaxFeatureFlags:
     def __init__(self) -> None:
         self._flags: Dict[str, bool] = {
+            "double_claim_bonus": False,
+            "streak_multiplier": True,
+            "export_v2": True,
+        }
+
+    def is_on(self, name: str) -> bool:
+        return self._flags.get(name, False)
+
+    def set(self, name: str, on: bool) -> None:
+        self._flags[name] = on
+
+
+class HaxTreasuryReport:
+    @staticmethod
+    def generate(engine: HackAppEngine) -> Dict[str, Any]:
+        total = engine._total_fees_wei
+        op_fee = hax_operator_fee_wei(total)
+        tr_fee = hax_treasury_wei(total)
+        return {
+            "total_fees_wei": total,
+            "operator_fee_wei": op_fee,
+            "treasury_fee_wei": tr_fee,
+            "treasury_address": HAX_TREASURY_ADDRESS,
+            "operator_address": HAX_OPERATOR_ADDRESS,
+        }
+
+
+def hax_validate_gadget_hash(h: str) -> bool:
+    if not h or len(h) != 64:
+        return False
+    try:
+        int(h, 16)
+        return True
+    except ValueError:
+        return False
+
+
+class HaxIdGenerator:
+    _counter = 0
+
+    @classmethod
+    def next_gadget_id(cls) -> int:
+        cls._counter += 1
+        return cls._counter
+
