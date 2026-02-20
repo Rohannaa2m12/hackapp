@@ -1078,3 +1078,48 @@ class HaxWebhookPayload:
     def gadget_registered(g: HaxGadget) -> Dict[str, Any]:
         return {"event": "gadget_registered", "gadget_id": g.gadget_id, "owner": g.owner, "ts": time.time()}
 
+    @staticmethod
+    def shortcut_claimed(s: HaxShortcut) -> Dict[str, Any]:
+        return {"event": "shortcut_claimed", "shortcut_id": s.shortcut_id, "gadget_id": s.gadget_id, "claimer": s.claimer, "ts": time.time()}
+
+
+def hax_version_string() -> str:
+    return "HackApp.GadgetSplash.1.0"
+
+
+def hax_supported_categories() -> List[str]:
+    return [c.value for c in HaxGadgetCategory]
+
+
+def hax_tier_bounds() -> Dict[str, Tuple[int, int]]:
+    return {t.value.name: (t.min_score, t.max_score) for t in HaxEfficiencyTier}
+
+
+class HaxMemoryStore:
+    def __init__(self) -> None:
+        self._store: Dict[str, Any] = {}
+
+    def set(self, key: str, value: Any) -> None:
+        self._store[key] = value
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self._store.get(key, default)
+
+    def delete(self, key: str) -> bool:
+        if key in self._store:
+            del self._store[key]
+            return True
+        return False
+
+    def keys(self) -> List[str]:
+        return list(self._store.keys())
+
+
+def hax_dedupe_ids(ids: List[int]) -> List[int]:
+    return list(dict.fromkeys(ids))
+
+
+def hax_chunk_list(items: List[Any], size: int) -> List[List[Any]]:
+    return [items[i : i + size] for i in range(0, len(items), size)]
+
+
