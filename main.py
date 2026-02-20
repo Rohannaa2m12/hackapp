@@ -403,3 +403,48 @@ def hax_validate_payload(payload: str, max_len: int = 4096) -> bool:
     return True
 
 
+def hax_validate_owner(owner: str) -> bool:
+    if not owner or len(owner) < 2 or len(owner) > 64:
+        return False
+    return owner.startswith("0x") or "." in owner or "@" in owner or owner.isalnum()
+
+
+# ---------------------------------------------------------------------------
+# Rate limiter (for API simulation)
+# ---------------------------------------------------------------------------
+
+class HaxRateLimiter:
+    def __init__(self, max_claims_per_minute: int = 10) -> None:
+        self._max = max_claims_per_minute
+        self._claims: Dict[str, List[float]] = {}
+
+    def allow(self, user: str) -> bool:
+        now = time.time()
+        window = 60.0
+        self._claims.setdefault(user, [])
+        self._claims[user] = [t for t in self._claims[user] if now - t < window]
+        if len(self._claims[user]) >= self._max:
+            return False
+        self._claims[user].append(now)
+        return True
+
+
+# ---------------------------------------------------------------------------
+# Webhook / event stub
+# ---------------------------------------------------------------------------
+
+class HaxEventBus:
+    def __init__(self) -> None:
+        self._listeners: List[Callable[[str, Dict[str, Any]], None]] = []
+
+    def subscribe(self, cb: Callable[[str, Dict[str, Any]], None]) -> None:
+        self._listeners.append(cb)
+
+    def emit(self, event: str, data: Dict[str, Any]) -> None:
+        for cb in self._listeners:
+            try:
+                cb(event, data)
+            except Exception:
+                pass
+
+
