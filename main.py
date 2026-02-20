@@ -1123,3 +1123,48 @@ def hax_chunk_list(items: List[Any], size: int) -> List[List[Any]]:
     return [items[i : i + size] for i in range(0, len(items), size)]
 
 
+class HaxTimer:
+    def __init__(self) -> None:
+        self._start = time.time()
+
+    def elapsed(self) -> float:
+        return time.time() - self._start
+
+    def reset(self) -> None:
+        self._start = time.time()
+
+
+def hax_default_operator() -> str:
+    return HAX_OPERATOR_ADDRESS
+
+
+def hax_default_treasury() -> str:
+    return HAX_TREASURY_ADDRESS
+
+
+class HaxEfficiencyRank:
+    def __init__(self, engine: HackAppEngine) -> None:
+        self._engine = engine
+
+    def rank_of(self, user: str) -> int:
+        top = HaxEfficiencyAnalytics(self._engine).top_users_by_score(limit=1000)
+        for i, (u, _) in enumerate(top, 1):
+            if u == user:
+                return i
+        return 0
+
+    def tier_of(self, user: str) -> HaxEfficiencyTier:
+        return self._engine.get_user_stats(user).tier
+
+
+def hax_env_bool(key: str, default: bool = False) -> bool:
+    import os
+    v = os.environ.get(key, "").strip().lower()
+    if v in ("1", "true", "yes"): return True
+    if v in ("0", "false", "no"): return False
+    return default
+
+
+def hax_env_int(key: str, default: int = 0) -> int:
+    import os
+    try:
