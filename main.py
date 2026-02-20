@@ -763,3 +763,48 @@ class HaxIdGenerator:
         cls._counter += 1
         return cls._counter
 
+    @classmethod
+    def next_shortcut_id(cls) -> int:
+        cls._counter += 1
+        return cls._counter
+
+    @classmethod
+    def uuid_short(cls) -> str:
+        return uuid.uuid4().hex[:12]
+
+
+class HaxPagination:
+    @staticmethod
+    def slice_list(items: List[Any], page: int, per_page: int) -> Tuple[List[Any], int, int]:
+        total = len(items)
+        start = (page - 1) * per_page
+        end = start + per_page
+        return items[start:end], total, max(1, (total + per_page - 1) // per_page)
+
+
+def hax_export_user_report(engine: HackAppEngine, user: str) -> str:
+    stats = engine.get_user_stats(user)
+    ids = engine.get_gadget_ids_by_owner(user)
+    gadgets = [engine._gadgets[i].to_dict() for i in ids if i in engine._gadgets]
+    data = {"user": user, "stats": stats.to_dict(), "gadgets": gadgets, "exported_at": time.time()}
+    return json.dumps(data, indent=2)
+
+
+class HaxEfficiencyFormula:
+    @staticmethod
+    def score_for_claim(base: int = HAX_SCORE_BASE, streak: int = 0) -> int:
+        bonus = min(streak * 2, 20)
+        return base + (int(time.time()) % 5) + bonus
+
+    @staticmethod
+    def tier_threshold(tier: HaxEfficiencyTier) -> int:
+        return tier.min_score
+
+
+def hax_dummy_load_test(engine: HackAppEngine, num_gadgets: int = 100, num_claims: int = 500) -> None:
+    users = [f"0xUser{i}" for i in range(10)]
+    for i in range(num_gadgets):
+        u = users[i % len(users)]
+        try:
+            engine.register_gadget(u, f"payload_{i}_hack", fee_wei=0)
+        except Exception:
