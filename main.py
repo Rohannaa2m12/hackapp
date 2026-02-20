@@ -493,3 +493,48 @@ class HaxConfigLoader:
 
     @staticmethod
     def load(path: Optional[str] = None) -> Dict[str, Any]:
+        p = path or HaxConfigLoader.DEFAULT_PATH
+        try:
+            with open(p, "r") as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return {
+                "max_gadgets": HAX_MAX_GADGETS,
+                "quota_per_user": HAX_QUOTA_PER_USER,
+                "fee_wei": HAX_FEE_WEI,
+                "min_claim_interval_sec": HAX_MIN_CLAIM_INTERVAL_SEC,
+            }
+
+    @staticmethod
+    def save(config: Dict[str, Any], path: Optional[str] = None) -> None:
+        p = path or HaxConfigLoader.DEFAULT_PATH
+        with open(p, "w") as f:
+            json.dump(config, f, indent=2)
+
+
+class HaxBatchProcessor:
+    def __init__(self, engine: HackAppEngine) -> None:
+        self._engine = engine
+
+    def register_batch(self, owner: str, payloads: List[str], category: HaxGadgetCategory = HaxGadgetCategory.SNIPPET) -> List[HaxGadget]:
+        out: List[HaxGadget] = []
+        for pl in payloads:
+            try:
+                g = self._engine.register_gadget(owner, pl, category=category, fee_wei=HAX_FEE_WEI)
+                out.append(g)
+            except Exception:
+                pass
+        return out
+
+    def claim_batch(self, claimer: str, gadget_ids: List[int]) -> List[HaxShortcut]:
+        out: List[HaxShortcut] = []
+        for gid in gadget_ids:
+            try:
+                s = self._engine.claim_shortcut(gid, claimer)
+                out.append(s)
+                time.sleep(0.01)
+            except Exception:
+                pass
+        return out
+
+
