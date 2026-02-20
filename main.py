@@ -1168,3 +1168,38 @@ def hax_env_bool(key: str, default: bool = False) -> bool:
 def hax_env_int(key: str, default: int = 0) -> int:
     import os
     try:
+        return int(os.environ.get(key, str(default)))
+    except ValueError:
+        return default
+
+
+def hax_hex_to_bytes(h: str) -> bytes:
+    if h.startswith("0x"):
+        h = h[2:]
+    return bytes.fromhex(h)
+
+
+def hax_bytes_to_hex(b: bytes) -> str:
+    return "0x" + b.hex()
+
+
+HAX_SUPPORTED_CATEGORIES_LIST = [c.value for c in HaxGadgetCategory]
+
+
+def hax_category_from_string(s: str) -> HaxGadgetCategory:
+    for c in HaxGadgetCategory:
+        if c.value == s:
+            return c
+    return HaxGadgetCategory.SNIPPET
+
+
+def hax_contract_fee_wei() -> int:
+    return HAX_FEE_WEI
+
+
+def hax_max_gadgets() -> int:
+    return HAX_MAX_GADGETS
+
+
+if __name__ == "__main__":
+    main()
