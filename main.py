@@ -988,3 +988,48 @@ class HaxBackoff:
 
 def hax_sanitize_display_name(name: str, max_len: int = 32) -> str:
     s = "".join(c for c in name if c.isalnum() or c in "._- ").strip()
+    return s[:max_len] if s else "anon"
+
+
+def hax_truncate_hash(h: str, head: int = 8, tail: int = 4) -> str:
+    if len(h) <= head + tail:
+        return h
+    return h[:head] + "..." + h[-tail:]
+
+
+class HaxGadgetRecommendation:
+    def __init__(self, engine: HackAppEngine) -> None:
+        self._engine = engine
+
+    def for_user(self, user: str, limit: int = 5) -> List[HaxGadget]:
+        owned_ids = set(self._engine.get_gadget_ids_by_owner(user))
+        by_claims = sorted(
+            [g for g in self._engine._gadgets.values() if g.active and g.gadget_id not in owned_ids],
+            key=lambda x: -x.claim_count,
+        )
+        return by_claims[:limit]
+
+
+class HaxDailyStats:
+    def __init__(self, engine: HackAppEngine) -> None:
+        self._engine = engine
+
+    def registrations_today(self) -> int:
+        today_start = time.time() - (time.time() % 86400)
+        return sum(1 for g in self._engine._gadgets.values() if g.registered_at >= today_start)
+
+    def claims_today(self) -> int:
+        today_start = time.time() - (time.time() % 86400)
+        return sum(1 for s in self._engine._shortcuts.values() if s.claimed_at >= today_start)
+
+
+def hax_build_sitemap_entries(engine: HackAppEngine, base_url: str) -> List[str]:
+    entries = [f"{base_url}/"]
+    for gid in engine._gadgets:
+        entries.append(f"{base_url}/gadget/{gid}")
+    return entries
+
+
+class HaxJsonSchemaValidator:
+    GADGET_SCHEMA = {
+        "type": "object",
