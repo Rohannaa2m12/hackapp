@@ -223,3 +223,48 @@ class HackAppEngine:
         self._check_paused()
         if fee_wei < HAX_FEE_WEI:
             raise HaxFeeRequiredError(HAX_FEE_WEI)
+        current = len(self._gadget_ids_by_owner.get(owner, []))
+        if current >= HAX_QUOTA_PER_USER:
+            raise HaxQuotaExceededError(owner, current, HAX_QUOTA_PER_USER)
+        if self._gadget_nonce >= HAX_MAX_GADGETS:
+            raise HaxInvalidGadgetIdError(self._gadget_nonce)
+
+        self._gadget_nonce += 1
+        gid = self._gadget_nonce
+        gh = hax_hash_gadget(payload + str(gid))
+        now = time.time()
+        g = HaxGadget(
+            gadget_id=gid,
+            owner=owner,
+            gadget_hash=gh,
+            category=category,
+            registered_at=now,
+            active=True,
+        )
+        self._gadgets[gid] = g
+        self._gadget_ids_by_owner.setdefault(owner, []).append(gid)
+        self._total_fees_wei += fee_wei
+        return g
+
+    def claim_shortcut(self, gadget_id: int, claimer: str) -> HaxShortcut:
+        self._check_paused()
+        if gadget_id not in self._gadgets:
+            raise HaxInvalidGadgetIdError(gadget_id)
+        g = self._gadgets[gadget_id]
+        if not g.active:
+            raise HaxGadgetInactiveError(gadget_id)
+        last = self._last_claim_time.get(claimer, 0)
+        if time.time() < last + HAX_MIN_CLAIM_INTERVAL_SEC:
+            raise HaxClaimTooSoonError(claimer, HAX_MIN_CLAIM_INTERVAL_SEC)
+
+        self._shortcut_nonce += 1
+        sid = self._shortcut_nonce
+        now = time.time()
+        score = HAX_SCORE_BASE + (int(now) % 5)
+        s = HaxShortcut(shortcut_id=sid, gadget_id=gadget_id, claimer=claimer, claimed_at=now, score_added=score)
+        self._shortcuts[sid] = s
+        self._shortcut_count_by_user[claimer] = self._shortcut_count_by_user.get(claimer, 0) + 1
+        self._efficiency_score[claimer] = self._efficiency_score.get(claimer, 0) + score
+        self._last_claim_time[claimer] = now
+        g.claim_count += 1
+        return s
