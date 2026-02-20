@@ -178,3 +178,48 @@ class HaxUserStats:
 def hax_hash_gadget(payload: str) -> str:
     data = (HAX_DOMAIN_SEED + "|" + payload).encode("utf-8")
     return hashlib.sha256(data).hexdigest()
+
+
+def hax_gadget_id_from_hash(h: str) -> int:
+    return int(h[:8], 16) % HAX_MAX_GADGETS
+
+
+def hax_encode_shortcut_key(gadget_id: int, claimer: str, ts: float) -> str:
+    return f"{gadget_id}:{claimer}:{ts}"
+
+
+# ---------------------------------------------------------------------------
+# Core engine
+# ---------------------------------------------------------------------------
+
+class HackAppEngine:
+    def __init__(self, paused: bool = False) -> None:
+        self._paused = paused
+        self._gadget_nonce = 0
+        self._shortcut_nonce = 0
+        self._gadgets: Dict[int, HaxGadget] = {}
+        self._shortcuts: Dict[int, HaxShortcut] = {}
+        self._gadget_ids_by_owner: Dict[str, List[int]] = {}
+        self._shortcut_count_by_user: Dict[str, int] = {}
+        self._efficiency_score: Dict[str, int] = {}
+        self._last_claim_time: Dict[str, float] = {}
+        self._total_fees_wei = 0
+        self._lock = False
+
+    def _check_paused(self) -> None:
+        if self._paused:
+            raise HaxPausedError()
+
+    def set_paused(self, paused: bool) -> None:
+        self._paused = paused
+
+    def register_gadget(
+        self,
+        owner: str,
+        payload: str,
+        category: HaxGadgetCategory = HaxGadgetCategory.SNIPPET,
+        fee_wei: int = HAX_FEE_WEI,
+    ) -> HaxGadget:
+        self._check_paused()
+        if fee_wei < HAX_FEE_WEI:
+            raise HaxFeeRequiredError(HAX_FEE_WEI)
