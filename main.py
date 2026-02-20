@@ -583,3 +583,48 @@ class HaxMigrationV1ToV2:
 class HaxHealthCheck:
     def __init__(self, engine: HackAppEngine) -> None:
         self._engine = engine
+
+    def run(self) -> Dict[str, Any]:
+        try:
+            gs = self._engine.get_global_stats()
+            return {"ok": True, "stats": gs, "timestamp": time.time()}
+        except Exception as e:
+            return {"ok": False, "error": str(e), "timestamp": time.time()}
+
+
+def hax_leaderboard_json(engine: HackAppEngine, limit: int = 50) -> str:
+    analytics = HaxEfficiencyAnalytics(engine)
+    top = analytics.top_users_by_score(limit)
+    data = [{"rank": i + 1, "user": u, "efficiency_score": s} for i, (u, s) in enumerate(top)]
+    return json.dumps(data, indent=2)
+
+
+class HaxShortcutValidator:
+    @staticmethod
+    def can_claim(engine: HackAppEngine, gadget_id: int, claimer: str) -> Tuple[bool, str]:
+        if gadget_id not in engine._gadgets:
+            return False, "invalid_gadget_id"
+        g = engine._gadgets[gadget_id]
+        if not g.active:
+            return False, "gadget_inactive"
+        last = engine._last_claim_time.get(claimer, 0)
+        if time.time() < last + HAX_MIN_CLAIM_INTERVAL_SEC:
+            return False, "claim_too_soon"
+        return True, "ok"
+
+
+class HaxGadgetSearch:
+    def __init__(self, engine: HackAppEngine) -> None:
+        self._engine = engine
+
+    def by_owner(self, owner: str) -> List[HaxGadget]:
+        ids = self._engine.get_gadget_ids_by_owner(owner)
+        return [self._engine._gadgets[i] for i in ids if i in self._engine._gadgets]
+
+    def by_category(self, category: HaxGadgetCategory) -> List[HaxGadget]:
+        return [g for g in self._engine._gadgets.values() if g.category == category]
+
+    def active_only(self) -> List[HaxGadget]:
+        return [g for g in self._engine._gadgets.values() if g.active]
+
+
