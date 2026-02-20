@@ -1033,3 +1033,48 @@ def hax_build_sitemap_entries(engine: HackAppEngine, base_url: str) -> List[str]
 class HaxJsonSchemaValidator:
     GADGET_SCHEMA = {
         "type": "object",
+        "required": ["owner", "gadget_hash"],
+        "properties": {
+            "owner": {"type": "string", "minLength": 2, "maxLength": 64},
+            "gadget_hash": {"type": "string", "minLength": 64, "maxLength": 64},
+            "category": {"type": "string", "enum": ["keyboard", "automation", "snippet", "workflow", "macro"]},
+        },
+    }
+
+    @staticmethod
+    def validate_gadget_input(data: Dict[str, Any]) -> List[str]:
+        errs: List[str] = []
+        if "owner" not in data:
+            errs.append("missing owner")
+        elif not isinstance(data["owner"], str) or not (2 <= len(data["owner"]) <= 64):
+            errs.append("invalid owner")
+        if "gadget_hash" not in data:
+            errs.append("missing gadget_hash")
+        elif not isinstance(data["gadget_hash"], str) or len(data["gadget_hash"]) != 64:
+            errs.append("invalid gadget_hash")
+        return errs
+
+
+def hax_checksum(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def hax_hmac_key() -> str:
+    return (HAX_DOMAIN_SEED + HAX_VAULT_SEED_HEX).encode().hex()[:64]
+
+
+class HaxRateLimitConfig:
+    def __init__(self, claims_per_min: int = 10, reg_per_min: int = 5) -> None:
+        self.claims_per_min = claims_per_min
+        self.reg_per_min = reg_per_min
+
+
+def hax_apply_rate_limits(limiter: HaxRateLimiter, user: str, action: str) -> bool:
+    return limiter.allow(user)
+
+
+class HaxWebhookPayload:
+    @staticmethod
+    def gadget_registered(g: HaxGadget) -> Dict[str, Any]:
+        return {"event": "gadget_registered", "gadget_id": g.gadget_id, "owner": g.owner, "ts": time.time()}
+
