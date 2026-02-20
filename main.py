@@ -943,3 +943,48 @@ class HaxRetryPolicy:
         self.max_attempts = max_attempts
         self.backoff_base = backoff_base
 
+    def run(self, fn: Callable[[], Any], is_retryable: Callable[[Exception], bool]) -> Any:
+        last: Optional[Exception] = None
+        for attempt in range(self.max_attempts):
+            try:
+                return fn()
+            except Exception as e:
+                last = e
+                if not is_retryable(e) or attempt == self.max_attempts - 1:
+                    raise
+                time.sleep(self.backoff_base * (2 ** attempt))
+        raise last or RuntimeError("retry exhausted")
+
+
+class HaxCircuitBreaker:
+    def __init__(self, failure_threshold: int = 5, reset_sec: float = 60) -> None:
+        self._threshold = failure_threshold
+        self._reset_sec = reset_sec
+        self._failures = 0
+        self._last_fail_time: float = 0
+
+    def record_success(self) -> None:
+        self._failures = 0
+
+    def record_failure(self) -> None:
+        self._failures += 1
+        self._last_fail_time = time.time()
+
+    def is_open(self) -> bool:
+        if time.time() - self._last_fail_time > self._reset_sec:
+            self._failures = 0
+        return self._failures >= self._threshold
+
+
+class HaxBackoff:
+    @staticmethod
+    def exponential(attempt: int, base: float = 1.0, cap: float = 60.0) -> float:
+        return min(cap, base * (2 ** attempt))
+
+    @staticmethod
+    def linear(attempt: int, step: float = 1.0, cap: float = 30.0) -> float:
+        return min(cap, step * (attempt + 1))
+
+
+def hax_sanitize_display_name(name: str, max_len: int = 32) -> str:
+    s = "".join(c for c in name if c.isalnum() or c in "._- ").strip()
