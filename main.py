@@ -628,3 +628,48 @@ class HaxGadgetSearch:
         return [g for g in self._engine._gadgets.values() if g.active]
 
 
+class HaxMetricsCollector:
+    def __init__(self) -> None:
+        self._counts: Dict[str, int] = {}
+        self._timings: Dict[str, List[float]] = {}
+
+    def increment(self, name: str, delta: int = 1) -> None:
+        self._counts[name] = self._counts.get(name, 0) + delta
+
+    def record_timing(self, name: str, sec: float) -> None:
+        self._timings.setdefault(name, []).append(sec)
+        if len(self._timings[name]) > 1000:
+            self._timings[name] = self._timings[name][-500:]
+
+    def summary(self) -> Dict[str, Any]:
+        return {"counts": dict(self._counts), "timing_keys": list(self._timings.keys())}
+
+
+def hax_simulate_claims(engine: HackAppEngine, n: int, users: List[str], gadget_ids: List[int]) -> int:
+    import random
+    success = 0
+    for _ in range(n):
+        u = random.choice(users)
+        gid = random.choice(gadget_ids)
+        try:
+            engine.claim_shortcut(gid, u)
+            success += 1
+        except Exception:
+            pass
+    return success
+
+
+class HaxApiResponse:
+    @staticmethod
+    def ok(data: Any) -> Dict[str, Any]:
+        return {"success": True, "data": data, "ts": time.time()}
+
+    @staticmethod
+    def err(message: str, code: int = 400) -> Dict[str, Any]:
+        return {"success": False, "error": message, "code": code, "ts": time.time()}
+
+
+def hax_serialize_gadget_for_evm(g: HaxGadget) -> Dict[str, Any]:
+    return {
+        "gadget_id": g.gadget_id,
+        "owner": g.owner,
