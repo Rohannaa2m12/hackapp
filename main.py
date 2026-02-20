@@ -538,3 +538,48 @@ class HaxBatchProcessor:
         return out
 
 
+class HaxCache:
+    def __init__(self, ttl_sec: float = 300, max_size: int = 1000) -> None:
+        self._ttl = ttl_sec
+        self._max = max_size
+        self._data: Dict[str, Tuple[Any, float]] = {}
+
+    def get(self, key: str) -> Optional[Any]:
+        if key not in self._data:
+            return None
+        val, ts = self._data[key]
+        if time.time() - ts > self._ttl:
+            del self._data[key]
+            return None
+        return val
+
+    def set(self, key: str, value: Any) -> None:
+        if len(self._data) >= self._max:
+            oldest = min(self._data.keys(), key=lambda k: self._data[k][1])
+            del self._data[oldest]
+        self._data[key] = (value, time.time())
+
+
+def hax_shortcut_key_hex(gadget_id: int, claimer: str, ts: float) -> str:
+    raw = hax_encode_shortcut_key(gadget_id, claimer, ts)
+    return hashlib.sha256(raw.encode()).hexdigest()[:32]
+
+
+class HaxMigrationV1ToV2:
+    @staticmethod
+    def migrate_user_id_v1_to_v2(old_id: str) -> str:
+        if old_id.startswith("v2_"):
+            return old_id
+        return "v2_" + hashlib.sha256(old_id.encode()).hexdigest()[:16]
+
+    @staticmethod
+    def migrate_gadget_record(g: HaxGadget) -> Dict[str, Any]:
+        d = g.to_dict()
+        d["_version"] = 2
+        d["_migrated_at"] = time.time()
+        return d
+
+
+class HaxHealthCheck:
+    def __init__(self, engine: HackAppEngine) -> None:
+        self._engine = engine
