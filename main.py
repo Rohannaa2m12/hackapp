@@ -43,3 +43,48 @@ class HaxGadgetCategory(Enum):
     MACRO = "macro"
 
 
+class HaxShortcutKind(Enum):
+    GLOBAL = "global"
+    APP = "app"
+    CONTEXT = "context"
+
+
+class HaxEfficiencyTier(Enum):
+    BRONZE = (0, 99)
+    SILVER = (100, 499)
+    GOLD = (500, 1999)
+    PLATINUM = (2000, 9999)
+    LEGEND = (10000, 10**9)
+
+    def __init__(self, min_score: int, max_score: int) -> None:
+        self.min_score = min_score
+        self.max_score = max_score
+
+    @classmethod
+    def from_score(cls, score: int) -> "HaxEfficiencyTier":
+        for t in cls:
+            if t.min_score <= score <= t.max_score:
+                return t
+        return cls.LEGEND
+
+
+# ---------------------------------------------------------------------------
+# Exceptions — unique names
+# ---------------------------------------------------------------------------
+
+class HaxQuotaExceededError(Exception):
+    def __init__(self, user: str, count: int, limit: int) -> None:
+        super().__init__(f"HackApp: gadget quota exceeded for {user} (count={count}, limit={limit})")
+
+
+class HaxInvalidGadgetIdError(Exception):
+    def __init__(self, gadget_id: int) -> None:
+        super().__init__(f"HackApp: invalid gadget id: {gadget_id}")
+
+
+class HaxGadgetInactiveError(Exception):
+    def __init__(self, gadget_id: int) -> None:
+        super().__init__(f"HackApp: gadget inactive: {gadget_id}")
+
+
+class HaxClaimTooSoonError(Exception):
